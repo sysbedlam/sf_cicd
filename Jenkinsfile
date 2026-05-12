@@ -2,18 +2,19 @@ pipeline {
     agent any
     stages {
         stage('Check changes') {
-            steps {
-                sh '''
-                    CHANGED=$(git diff HEAD~1 HEAD --name-only)
-                    echo "Changed files: $CHANGED"
-                    if ! echo "$CHANGED" | grep -q "index.html"; then
-                        echo "index.html not changed, skipping..."
-                        exit 0
-                    fi
-                    echo "index.html changed, continuing..."
-                '''
+    steps {
+        script {
+            def changed = sh(script: 'git diff HEAD~1 HEAD --name-only', returnStdout: true).trim()
+            echo "Changed files: ${changed}"
+            if (!changed.contains('index.html')) {
+                echo "index.html not changed, skipping..."
+                currentBuild.result = 'ABORTED'
+                error('Stopping pipeline - index.html not changed')
             }
+            echo "index.html changed, continuing..."
         }
+    }
+}
         stage('Run nginx') {
             steps {
                 sh '''
