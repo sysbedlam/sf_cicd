@@ -45,6 +45,18 @@ pipeline {
     }
 
     post {
+		success {
+        withCredentials([
+            string(credentialsId: 'telegram-token', variable: 'TOKEN'),
+            string(credentialsId: 'telegram-chatid', variable: 'CHAT_ID')
+        ]) {
+            sh '''
+                curl -s -X POST https://api.telegram.org/bot${TOKEN}/sendMessage \
+                    -d chat_id=${CHAT_ID} \
+                    -d text="CI SUCCESS! Деплой прошёл успешно"
+            '''
+        }
+    }
         failure {
             withCredentials([
                 string(credentialsId: 'telegram-token', variable: 'TOKEN'),
