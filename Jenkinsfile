@@ -1,7 +1,19 @@
 pipeline {
     agent any
-
     stages {
+        stage('Check changes') {
+            steps {
+                sh '''
+                    CHANGED=$(git diff HEAD~1 HEAD --name-only)
+                    echo "Changed files: $CHANGED"
+                    if ! echo "$CHANGED" | grep -q "index.html"; then
+                        echo "index.html not changed, skipping..."
+                        exit 0
+                    fi
+                    echo "index.html changed, continuing..."
+                '''
+            }
+        }
         stage('Run nginx') {
             steps {
                 sh '''
@@ -14,7 +26,6 @@ pipeline {
                 '''
             }
         }
-
         stage('Check HTTP 200') {
             steps {
                 sh '''
@@ -26,7 +37,6 @@ pipeline {
                 '''
             }
         }
-
         stage('Check MD5') {
             steps {
                 sh '''
@@ -43,20 +53,19 @@ pipeline {
             }
         }
     }
-
     post {
-		success {
-        withCredentials([
-            string(credentialsId: 'telegram-token', variable: 'TOKEN'),
-            string(credentialsId: 'telegram-chatid', variable: 'CHAT_ID')
-        ]) {
-            sh '''
-                curl -s -X POST https://api.telegram.org/bot${TOKEN}/sendMessage \
-                    -d chat_id=${CHAT_ID} \
-                    -d text="CI SUCCESS! Деплой прошёл успешно"
-            '''
+        success {
+            withCredentials([
+                string(credentialsId: 'telegram-token', variable: 'TOKEN'),
+                string(credentialsId: 'telegram-chatid', variable: 'CHAT_ID')
+            ]) {
+                sh '''
+                    curl -s -X POST https://api.telegram.org/bot${TOKEN}/sendMessage \
+                        -d chat_id=${CHAT_ID} \
+                        -d text="CI SUCCESS! Деплой прошёл успешно"
+                '''
+            }
         }
-    }
         failure {
             withCredentials([
                 string(credentialsId: 'telegram-token', variable: 'TOKEN'),
@@ -69,7 +78,6 @@ pipeline {
                 '''
             }
         }
-
         always {
             sh 'docker rm -f nginx_test || true'
         }
